@@ -1,0 +1,8 @@
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\Backend.Api.csproj.AssemblyReference.cache
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\rpswa.dswa.cache.json
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\Backend.Api.GeneratedMSBuildEditorConfig.editorconfig
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\Backend.Api.AssemblyInfoInputs.cache
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\Backend.Api.AssemblyInfo.cs
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\Backend.Api.csproj.CoreCompileInputs.cache
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\Backend.Api.MvcApplicationPartsAssemblyInfo.cs
+E:\Web dev\Full-stack\GOFIVE-Project\backend\Backend.Api\obj\Debug\net10.0\Backend.Api.MvcApplicationPartsAssemblyInfo.cache

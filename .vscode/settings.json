@@ -1,0 +1,15 @@
+{
+  "dotnet.defaultSolution": "API.sln",
+  "angular-schematics.schematicsDefaultOptions": {
+    "angular-*": {
+      "externalTemplate": true
+    },
+    "angular-component": {
+      "skipDisplayBlock": true,
+      "ngOnInit": false
+    },
+    "angular-page": {
+      "skipNgOnInit": true
+    }
+  }
+}
