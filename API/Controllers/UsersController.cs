@@ -26,15 +26,61 @@ public class UsersController : ControllerBase
   }
 
   [HttpGet]
-  public async Task<IActionResult> GetUsers()
+  public async Task<IActionResult> GetUsers(
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 6,
+    [FromQuery] string? sortBy = "name",
+    [FromQuery] string? sortDir = "asc",
+    [FromQuery] string? search = null)
   {
-    // Includes nested Role and Permissions in the response
-    var users = await _db.Users
-        .Include(u => u.Role)
-        .Include(u => u.Permissions)
-        .ToListAsync();
+    page = Math.Max(page, 1);
+    pageSize = Math.Clamp(pageSize, 1, 100);
 
-    return Ok(users);
+    var query = _db.Users
+      .Include(u => u.Role)
+      .Include(u => u.Permissions)
+      .AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+      var term = search.Trim().ToLower();
+      query = query.Where(u =>
+        ((u.FirstName ?? "") + " " + (u.LastName ?? "")).ToLower().Contains(term) ||
+        (u.Username ?? "").ToLower().Contains(term) ||
+        (u.Email ?? "").ToLower().Contains(term));
+    }
+
+    var isDesc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+    query = (sortBy ?? "name").Trim().ToLower() switch
+    {
+      "username" => isDesc
+        ? query.OrderByDescending(u => u.Username ?? "")
+        : query.OrderBy(u => u.Username ?? ""),
+      "email" => isDesc
+        ? query.OrderByDescending(u => u.Email ?? "")
+        : query.OrderBy(u => u.Email ?? ""),
+      "createddate" => isDesc
+        ? query.OrderByDescending(u => u.CreatedDate ?? "")
+        : query.OrderBy(u => u.CreatedDate ?? ""),
+      _ => isDesc
+        ? query.OrderByDescending(u => (u.FirstName ?? "") + " " + (u.LastName ?? ""))
+        : query.OrderBy(u => (u.FirstName ?? "") + " " + (u.LastName ?? "")),
+    };
+
+    var totalItems = await query.CountAsync();
+    var users = await query
+      .Skip((page - 1) * pageSize)
+      .Take(pageSize)
+      .ToListAsync();
+
+    return Ok(new
+    {
+      items = users,
+      page,
+      pageSize,
+      totalItems,
+      totalPages = (int)Math.Ceiling(totalItems / (double)pageSize)
+    });
   }
 
   [HttpGet("{id}")]
@@ -77,7 +123,7 @@ public class UsersController : ControllerBase
       return BadRequest(validationError);
     }
 
-    user.Permissions ??= [];
+    user.Permissions ??= new List<Permission>();
 
     _db.Users.Add(user);
     await _db.SaveChangesAsync();
@@ -132,10 +178,25 @@ public class UsersController : ControllerBase
   [HttpDelete("{id}")]
   public async Task<IActionResult> DeleteUser(string id)
   {
-    var user = await _db.Users.FindAsync(id);
+    var user = await _db.Users
+      .Include(u => u.Role)
+      .Include(u => u.Permissions)
+      .FirstOrDefaultAsync(u => u.UserId == id);
+
     if (user == null)
     {
       return NotFound();
+    }
+
+    // Remove dependents first to avoid FK constraint violations.
+    if (user.Permissions != null && user.Permissions.Count > 0)
+    {
+      _db.RemoveRange(user.Permissions);
+    }
+
+    if (user.Role != null)
+    {
+      _db.Remove(user.Role);
     }
 
     _db.Users.Remove(user);
@@ -173,7 +234,7 @@ public class UsersController : ControllerBase
       user.Role.RoleId = Guid.NewGuid().ToString();
     }
 
-    user.Permissions ??= [];
+    user.Permissions ??= new List<Permission>();
     var distinctPermissions = user.Permissions
       .Where(p => !string.IsNullOrWhiteSpace(p.PermissionName))
       .GroupBy(p => p.PermissionName.Trim(), StringComparer.OrdinalIgnoreCase)
