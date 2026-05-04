@@ -1,11 +1,13 @@
 public class User
 {
-  public required string UserId { get; set; } = Guid.NewGuid().ToString();
+  public required string UserId { get; set; }
   public required string FirstName { get; set; }
   public required string LastName { get; set; }
   public required string Email { get; set; }
+  public string? Phone { get; set; }
   public required string Username { get; set; }
-  public required string CreatedDate { get; set; } // You can also use DateTime if your DB supports it
+  public required string Password { get; set; }
+  public required string CreatedDate { get; set; } = ""; // You can also use DateTime if your DB supports it
 
   // Navigation properties for nested objects
   public required Role Role { get; set; }

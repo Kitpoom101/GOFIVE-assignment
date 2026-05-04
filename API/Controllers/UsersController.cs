@@ -6,6 +6,19 @@ using Microsoft.EntityFrameworkCore;
 public class UsersController : ControllerBase
 {
   private readonly AppDbContext _db;
+  private static readonly HashSet<string> AllowedRoles = new(StringComparer.OrdinalIgnoreCase)
+  {
+    "Super admin",
+    "admin",
+    "employee"
+  };
+
+  private static readonly HashSet<string> AllowedPermissionNames = new(StringComparer.OrdinalIgnoreCase)
+  {
+    "read",
+    "write",
+    "delete"
+  };
 
   public UsersController(AppDbContext db)
   {
@@ -58,6 +71,12 @@ public class UsersController : ControllerBase
       user.CreatedDate = DateTime.UtcNow.ToString("O");
     }
 
+    var validationError = NormalizeAndValidateRoleAndPermissions(user);
+    if (validationError != null)
+    {
+      return BadRequest(validationError);
+    }
+
     user.Permissions ??= [];
 
     _db.Users.Add(user);
@@ -77,6 +96,12 @@ public class UsersController : ControllerBase
     if (id != user.UserId)
     {
       return BadRequest("User ID mismatch.");
+    }
+
+    var validationError = NormalizeAndValidateRoleAndPermissions(user);
+    if (validationError != null)
+    {
+      return BadRequest(validationError);
     }
 
     _db.Entry(user).State = EntityState.Modified;
@@ -127,5 +152,50 @@ public class UsersController : ControllerBase
   private bool UserExists(string id)
   {
     return _db.Users.Any(e => e.UserId == id);
+  }
+
+  private static string? NormalizeAndValidateRoleAndPermissions(User user)
+  {
+    if (user.Role == null || string.IsNullOrWhiteSpace(user.Role.RoleName))
+    {
+      return "Role is required.";
+    }
+
+    var normalizedRoleName = user.Role.RoleName.Trim();
+    if (!AllowedRoles.Contains(normalizedRoleName))
+    {
+      return "Role must be one of: Super admin, admin, employee.";
+    }
+
+    user.Role.RoleName = normalizedRoleName;
+    if (string.IsNullOrWhiteSpace(user.Role.RoleId))
+    {
+      user.Role.RoleId = Guid.NewGuid().ToString();
+    }
+
+    user.Permissions ??= [];
+    var distinctPermissions = user.Permissions
+      .Where(p => !string.IsNullOrWhiteSpace(p.PermissionName))
+      .GroupBy(p => p.PermissionName.Trim(), StringComparer.OrdinalIgnoreCase)
+      .Select(g => g.First())
+      .ToList();
+
+    foreach (var permission in distinctPermissions)
+    {
+      permission.PermissionName = permission.PermissionName.Trim().ToLowerInvariant();
+
+      if (!AllowedPermissionNames.Contains(permission.PermissionName))
+      {
+        return "Permissions can only be: read, write, delete.";
+      }
+
+      if (string.IsNullOrWhiteSpace(permission.PermissionId))
+      {
+        permission.PermissionId = Guid.NewGuid().ToString();
+      }
+    }
+
+    user.Permissions = distinctPermissions;
+    return null;
   }
 }
